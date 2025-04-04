@@ -6,21 +6,29 @@
 #include <vector>
 #include <numeric>
 #include <map>
-using namespace std;
-
 #include <eigen3/Eigen/Dense>
+#include "parameters.h"
+#include <iostream>
+
+using namespace std;
 using namespace Eigen;
 
 // #include <ros/console.h>
 // #include <ros/assert.h>
 
-#include "parameters.h"
-
+//여기는 parameter.h 에 넣을 수도 있는데, 일단 conflict 날까봐 여기 넣어둠
 const int NUM_OF_CAM = 1;
+const int WINDOW_SIZE = 10;
+//이거 camera focal length 받아와서 focal length 나눠줘야 함.
+const double MIN_PARALLAX = 10.0;
+const double INIT_DEPTH = 5.0;
 
+
+//추적된 각 프레임에서의 관측 정보들을 모은 집합 
 class FeaturePerFrame
 {
   public:
+    //td는 time_delay를 의미
     FeaturePerFrame(const Eigen::Matrix<double, 7, 1> &_point, double td)
     {
         point.x() = _point(0);
@@ -44,6 +52,7 @@ class FeaturePerFrame
     double dep_gradient;
 };
 
+//한 feature 에 대한 정보를 담고 있는.
 class FeaturePerId
 {
   public:

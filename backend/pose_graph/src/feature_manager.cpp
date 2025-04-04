@@ -1,9 +1,12 @@
-#include "feature_manager.h"
+#include "include/feature_manager.h"
 
+
+//대략적인 endframe 계산
 int FeaturePerId::endFrame()
 {
     return start_frame + feature_per_frame.size() - 1;
 }
+
 
 FeatureManager::FeatureManager(Matrix3d _Rs[])
     : Rs(_Rs)
@@ -12,19 +15,23 @@ FeatureManager::FeatureManager(Matrix3d _Rs[])
         ric[i].setIdentity();
 }
 
-void FeatureManager::setRic(Matrix3d _ric[])
-{
-    for (int i = 0; i < NUM_OF_CAM; i++)
-    {
-        ric[i] = _ric[i];
-    }
-}
+//estimator 에서 setRic를 호출하기는 하는데, 우리 extrinc 안써도 되지 않나? 일단 주석
+// void FeatureManager::setRic(Matrix3d _ric[])
+// {
+//     for (int i = 0; i < NUM_OF_CAM; i++)
+//     {
+//         ric[i] = _ric[i];
+//     }
+// }
 
+
+//list<FeaturePerId> feature; 이것도 estimator 에서 restart 할 때 가져다 씀
 void FeatureManager::clearState()
 {
     feature.clear();
 }
 
+//feture -> feature_per_id -> feature_per_frame 이 식의 자료구조임. 
 int FeatureManager::getFeatureCount()
 {
     int cnt = 0;
@@ -32,7 +39,8 @@ int FeatureManager::getFeatureCount()
     {
 
         it.used_num = it.feature_per_frame.size();
-
+        
+        //충분히 오래 추적된 point 만 사용할 것
         if (it.used_num >= 2 && it.start_frame < WINDOW_SIZE - 2)
         {
             cnt++;
@@ -41,11 +49,27 @@ int FeatureManager::getFeatureCount()
     return cnt;
 }
 
-//feature 추가 및 magin 방법 결정
+/*
+input 
+frame_count : 현재 frame의 번호
+&image : 특징점 집합
+td : time_delay
+
+output
+true : 정상 추가
+false : 시차 정보가 충분하지 않다.
+
+estimator 의 processImage 에서 유일한 호출
+margin 여부에 대한 판단으로 사용.
+MIN_PALLERAX 값을 이용하기 위해서 focal_length() 가 필요한데, 우짜지
+단순히 무차별 대입해서 괜찮은 값을 찾아도 되긴함
+일단은 yaml 파일에서 나와있는 10.0 으로 header에 넣어놓음.
+*/
 bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td)
 {
-    ROS_DEBUG("input feature: %d", (int)image.size());
-    ROS_DEBUG("num of feature: %d", getFeatureCount());
+    //los debug 변경
+    std::cout << "input feature: " << (int)image.size();
+    std::cout << "num of feature: " << getFeatureCount();
     double parallax_sum = 0;
     int parallax_num = 0;
     last_track_num = 0;
@@ -90,33 +114,36 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
     }
     else
     {
-        ROS_DEBUG("parallax_sum: %lf, parallax_num: %d", parallax_sum, parallax_num);
-        ROS_DEBUG("current parallax: %lf", parallax_sum / parallax_num * FOCAL_LENGTH);
+        // ROS_DEBUG("parallax_sum: %lf, parallax_num: %d", parallax_sum, parallax_num);
+        // ROS_DEBUG("current parallax: %lf", parallax_sum / parallax_num * FOCAL_LENGTH);
         return parallax_sum / parallax_num >= MIN_PARALLAX;
     }
 }
 
-void FeatureManager::debugShow()
-{
-    ROS_DEBUG("debug show");
-    for (auto &it : feature)
-    {
-        ROS_ASSERT(it.feature_per_frame.size() != 0);
-        ROS_ASSERT(it.start_frame >= 0);
-        ROS_ASSERT(it.used_num >= 0);
+//for debug
+// void FeatureManager::debugShow()
+// {
+//     ROS_DEBUG("debug show");
+//     for (auto &it : feature)
+//     {
+//         ROS_ASSERT(it.feature_per_frame.size() != 0);
+//         ROS_ASSERT(it.start_frame >= 0);
+//         ROS_ASSERT(it.used_num >= 0);
 
-        ROS_DEBUG("%d,%d,%d ", it.feature_id, it.used_num, it.start_frame);
-        int sum = 0;
-        for (auto &j : it.feature_per_frame)
-        {
-            ROS_DEBUG("%d,", int(j.is_used));
-            sum += j.is_used;
-            printf("(%lf,%lf) ",j.point(0), j.point(1));
-        }
-        ROS_ASSERT(it.used_num == sum);
-    }
-}
+//         ROS_DEBUG("%d,%d,%d ", it.feature_id, it.used_num, it.start_frame);
+//         int sum = 0;
+//         for (auto &j : it.feature_per_frame)
+//         {
+//             ROS_DEBUG("%d,", int(j.is_used));
+//             sum += j.is_used;
+//             printf("(%lf,%lf) ",j.point(0), j.point(1));
+//         }
+//         ROS_ASSERT(it.used_num == sum);
+//     }
+// }
 
+//frame 간 특징점 대응
+//frame_count_l, frame_count_r 인접 frame 좌우를 말함.
 vector<pair<Vector3d, Vector3d>> FeatureManager::getCorresponding(int frame_count_l, int frame_count_r)
 {
     vector<pair<Vector3d, Vector3d>> corres;
@@ -138,6 +165,7 @@ vector<pair<Vector3d, Vector3d>> FeatureManager::getCorresponding(int frame_coun
     return corres;
 }
 
+//double2vector에서 사용하는데, 월드 좌표계 변환에 사용. 이럼 이거 우린 필요없을 듯?
 void FeatureManager::setDepth(const VectorXd &x)
 {
     int feature_index = -1;
@@ -158,6 +186,7 @@ void FeatureManager::setDepth(const VectorXd &x)
     }
 }
 
+//estimator processImage 에서 사용. 즉 필요할듯.
 void FeatureManager::removeFailures()
 {
     for (auto it = feature.begin(), it_next = feature.begin();
@@ -169,6 +198,7 @@ void FeatureManager::removeFailures()
     }
 }
 
+//visualInitialAlign 이거 imu 랑 camera 정렬에 씀. 필요 X
 void FeatureManager::clearDepth(const VectorXd &x)
 {
     int feature_index = -1;
@@ -181,6 +211,7 @@ void FeatureManager::clearDepth(const VectorXd &x)
     }
 }
 
+//visualInitialAlign 이랑, vector2double 에 씀. 필요 X
 VectorXd FeatureManager::getDepthVector()
 {
     VectorXd dep_vec(getFeatureCount());
@@ -199,6 +230,7 @@ VectorXd FeatureManager::getDepthVector()
     return dep_vec;
 }
 
+//solveOdometry(), img,imu align 에서만 쓰는데, 이것도 갈갈 가능 필요 X
 void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
 {
     for (auto &it_per_id : feature)
@@ -210,8 +242,9 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
         if (it_per_id.estimated_depth > 0)
             continue;
         int imu_i = it_per_id.start_frame, imu_j = imu_i - 1;
-
-        ROS_ASSERT(NUM_OF_CAM == 1);
+        
+        //ROSASSET 변경, 근데 짜피 필요없을듯. 항상 1임.
+        assert(NUM_OF_CAM == 1);
         Eigen::MatrixXd svd_A(2 * it_per_id.feature_per_frame.size(), 4);
         int svd_idx = 0;
 
@@ -239,7 +272,7 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
             if (imu_i == imu_j)
                 continue;
         }
-        ROS_ASSERT(svd_idx == svd_A.rows());
+        assert(svd_idx == svd_A.rows());
         Eigen::Vector4d svd_V = Eigen::JacobiSVD<Eigen::MatrixXd>(svd_A, Eigen::ComputeThinV).matrixV().rightCols<1>();
         double svd_method = svd_V[2] / svd_V[3];
         //it_per_id->estimated_depth = -b / A;
@@ -256,21 +289,22 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
     }
 }
 
-void FeatureManager::removeOutlier()
-{
-    ROS_BREAK();
-    int i = -1;
-    for (auto it = feature.begin(), it_next = feature.begin();
-         it != feature.end(); it = it_next)
-    {
-        it_next++;
-        i += it->used_num != 0;
-        if (it->used_num != 0 && it->is_outlier == true)
-        {
-            feature.erase(it);
-        }
-    }
-}
+//아무데도 안씀 삭제 가능
+// void FeatureManager::removeOutlier()
+// {
+//     ROS_BREAK();
+//     int i = -1;
+//     for (auto it = feature.begin(), it_next = feature.begin();
+//          it != feature.end(); it = it_next)
+//     {
+//         it_next++;
+//         i += it->used_num != 0;
+//         if (it->used_num != 0 && it->is_outlier == true)
+//         {
+//             feature.erase(it);
+//         }
+//     }
+// }
 
 void FeatureManager::removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3d marg_P, Eigen::Matrix3d new_R, Eigen::Vector3d new_P)
 {
