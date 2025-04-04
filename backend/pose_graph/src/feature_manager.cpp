@@ -306,6 +306,7 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
 //     }
 // }
 
+//slide_window_Old 에서 사용함.
 void FeatureManager::removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3d marg_P, Eigen::Matrix3d new_R, Eigen::Vector3d new_P)
 {
     for (auto it = feature.begin(), it_next = feature.begin();
@@ -346,6 +347,7 @@ void FeatureManager::removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3
     }
 }
 
+//slide window old
 void FeatureManager::removeBack()
 {
     for (auto it = feature.begin(), it_next = feature.begin();
@@ -364,6 +366,7 @@ void FeatureManager::removeBack()
     }
 }
 
+//slideWindowNew
 void FeatureManager::removeFront(int frame_count)
 {
     for (auto it = feature.begin(), it_next = feature.begin(); it != feature.end(); it = it_next)
@@ -386,6 +389,7 @@ void FeatureManager::removeFront(int frame_count)
     }
 }
 
+//이건 같은 파일내, addFeatureCheckParallax 에 쓰는 녀석들인데, 시점 검사 하는
 double FeatureManager::compensatedParallax2(const FeaturePerId &it_per_id, int frame_count)
 {
     //check the second last frame is keyframe or not
