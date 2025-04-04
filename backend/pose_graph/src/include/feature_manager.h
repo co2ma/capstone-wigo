@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <vector>
 #include <numeric>
+#include <map>
 using namespace std;
 
 #include <eigen3/Eigen/Dense>
@@ -14,6 +15,8 @@ using namespace Eigen;
 // #include <ros/assert.h>
 
 #include "parameters.h"
+
+const int NUM_OF_CAM = 1;
 
 class FeaturePerFrame
 {
