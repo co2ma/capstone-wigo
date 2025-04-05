@@ -24,7 +24,6 @@
 #include "plane_renderer.h"
 #include "util.h"
 
-typedef std::shared_ptr<std::vector<FeaturePerFrame>> FeatureListPtr;
 
 
 namespace hello_ar {
@@ -463,13 +462,13 @@ namespace hello_ar {
             glm::vec4 world_point(X, Y, Z, 1.0f);
             glm::vec4 projected = projection_matrix * world_point;
 
-            float u = projected.x / projected.w;
-            float v = projected.y / projected.w;
+            float u = projected.x / projected.z;
+            float v = projected.y / projected.z;
 
             Eigen::Matrix<double, 7, 1> pt;
             pt << X, Y, Z, u, v, 0.0, 0.0;
 
-            features.emplace_back(pt, 0.0);
+            features->emplace_back(pt, 0.0);
         }
 
         return features;
