@@ -17,7 +17,6 @@ using namespace Eigen;
 // #include <ros/assert.h>
 
 //여기는 parameter.h 에 넣을 수도 있는데, 일단 conflict 날까봐 여기 넣어둠
-const int NUM_OF_CAM = 1;
 const int WINDOW_SIZE = 10;
 //이거 camera focal length 받아와서 focal length 나눠줘야 함.
 const double MIN_PARALLAX = 10.0;
@@ -80,9 +79,9 @@ class FeaturePerId
 class FeatureManager
 {
   public:
-    FeatureManager(Matrix3d _Rs[]);
+    FeatureManager(const Matrix3d &_Rs);
 
-    void setRic(Matrix3d _ric[]);
+    void setRic(Matrix3d _ric);
 
     void clearState();
 
@@ -97,7 +96,6 @@ class FeatureManager
     void removeFailures();
     void clearDepth(const VectorXd &x);
     VectorXd getDepthVector();
-    void triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[]);
     void removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3d marg_P, Eigen::Matrix3d new_R, Eigen::Vector3d new_P);
     void removeBack();
     void removeFront(int frame_count);
@@ -108,7 +106,9 @@ class FeatureManager
   private:
     double compensatedParallax2(const FeaturePerId &it_per_id, int frame_count);
     const Matrix3d *Rs;
-    Matrix3d ric[NUM_OF_CAM];
+    Matrix3d ric;
 };
 
 #endif
+
+//pointcloud 정보를 가지고, 이걸 featuremanager 를 만들고,

@@ -8,21 +8,17 @@ int FeaturePerId::endFrame()
 }
 
 
-FeatureManager::FeatureManager(Matrix3d _Rs[])
-    : Rs(_Rs)
+FeatureManager::FeatureManager(const Matrix3d &_Rs)
+    : Rs(&_Rs)
 {
-    for (int i = 0; i < NUM_OF_CAM; i++)
-        ric[i].setIdentity();
+    ric.setIdentity();
 }
 
 //estimator 에서 setRic를 호출하기는 하는데, 우리 extrinc 안써도 되지 않나? 일단 주석
-// void FeatureManager::setRic(Matrix3d _ric[])
-// {
-//     for (int i = 0; i < NUM_OF_CAM; i++)
-//     {
-//         ric[i] = _ric[i];
-//     }
-// }
+void FeatureManager::setRic(Matrix3d _ric)
+{
+    ric[0] = _ric[0];
+}
 
 
 //list<FeaturePerId> feature; 이것도 estimator 에서 restart 할 때 가져다 씀
@@ -231,63 +227,6 @@ VectorXd FeatureManager::getDepthVector()
 }
 
 //solveOdometry(), img,imu align 에서만 쓰는데, 이것도 갈갈 가능 필요 X
-void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
-{
-    for (auto &it_per_id : feature)
-    {
-        it_per_id.used_num = it_per_id.feature_per_frame.size();
-        if (!(it_per_id.used_num >= 2 && it_per_id.start_frame < WINDOW_SIZE - 2))
-            continue;
-
-        if (it_per_id.estimated_depth > 0)
-            continue;
-        int imu_i = it_per_id.start_frame, imu_j = imu_i - 1;
-        
-        //ROSASSET 변경, 근데 짜피 필요없을듯. 항상 1임.
-        assert(NUM_OF_CAM == 1);
-        Eigen::MatrixXd svd_A(2 * it_per_id.feature_per_frame.size(), 4);
-        int svd_idx = 0;
-
-        Eigen::Matrix<double, 3, 4> P0;
-        Eigen::Vector3d t0 = Ps[imu_i] + Rs[imu_i] * tic[0];
-        Eigen::Matrix3d R0 = Rs[imu_i] * ric[0];
-        P0.leftCols<3>() = Eigen::Matrix3d::Identity();
-        P0.rightCols<1>() = Eigen::Vector3d::Zero();
-
-        for (auto &it_per_frame : it_per_id.feature_per_frame)
-        {
-            imu_j++;
-
-            Eigen::Vector3d t1 = Ps[imu_j] + Rs[imu_j] * tic[0];
-            Eigen::Matrix3d R1 = Rs[imu_j] * ric[0];
-            Eigen::Vector3d t = R0.transpose() * (t1 - t0);
-            Eigen::Matrix3d R = R0.transpose() * R1;
-            Eigen::Matrix<double, 3, 4> P;
-            P.leftCols<3>() = R.transpose();
-            P.rightCols<1>() = -R.transpose() * t;
-            Eigen::Vector3d f = it_per_frame.point.normalized();
-            svd_A.row(svd_idx++) = f[0] * P.row(2) - f[2] * P.row(0);
-            svd_A.row(svd_idx++) = f[1] * P.row(2) - f[2] * P.row(1);
-
-            if (imu_i == imu_j)
-                continue;
-        }
-        assert(svd_idx == svd_A.rows());
-        Eigen::Vector4d svd_V = Eigen::JacobiSVD<Eigen::MatrixXd>(svd_A, Eigen::ComputeThinV).matrixV().rightCols<1>();
-        double svd_method = svd_V[2] / svd_V[3];
-        //it_per_id->estimated_depth = -b / A;
-        //it_per_id->estimated_depth = svd_V[2] / svd_V[3];
-
-        it_per_id.estimated_depth = svd_method;
-        //it_per_id->estimated_depth = INIT_DEPTH;
-
-        if (it_per_id.estimated_depth < 0.1)
-        {
-            it_per_id.estimated_depth = INIT_DEPTH;
-        }
-
-    }
-}
 
 //아무데도 안씀 삭제 가능
 // void FeatureManager::removeOutlier()
