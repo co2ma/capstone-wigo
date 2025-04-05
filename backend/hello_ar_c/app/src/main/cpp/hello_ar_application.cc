@@ -234,8 +234,6 @@ namespace hello_ar {
 
         if (!path_generated_) {
 
-        if (!path_generated_) {
-
             Point start = {pose_raw[4], pose_raw[6]};
             Point goal = {-10.0f, -18.0f};  // 원하는 도착 위치
 
