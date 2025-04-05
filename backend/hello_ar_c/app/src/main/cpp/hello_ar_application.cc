@@ -24,6 +24,9 @@
 #include "plane_renderer.h"
 #include "util.h"
 
+typedef std::shared_ptr<std::vector<FeaturePerFrame>> FeatureListPtr;
+
+
 namespace hello_ar {
     namespace {
         constexpr size_t kMaxNumberOfAndroidsToRender = 20;
@@ -307,6 +310,7 @@ namespace hello_ar {
         glm::mat4 view_mat;
         glm::mat4 projection_mat;
         ArCamera_getViewMatrix(ar_session_, ar_camera, glm::value_ptr(view_mat));
+        //projection matrix 받아오기
         ArCamera_getProjectionMatrix(ar_session_, ar_camera,
                 /*near=*/0.1f, /*far=*/100.f,
                                      glm::value_ptr(projection_mat));
@@ -413,11 +417,62 @@ namespace hello_ar {
         ArPointCloud* ar_point_cloud = nullptr;
         ArStatus point_cloud_status =
                 ArFrame_acquirePointCloud(ar_session_, ar_frame_, &ar_point_cloud);
+
+        
+
+        ArCameraIntrinsics* intrinsics;
+        ArCameraIntrinsics_create(ar_session, &intrinsics);
+        
+        // ArCamera* camera 는 ArFrame_getCamera() 등으로 가져온 상태여야 함
+        ArCamera_getImageIntrinsics(ar_session, ar_camera, intrinsics);
+
+        // float fx, fy;
+        // float cx, cy;
+        // int width, height;
+
+        // ArCameraIntrinsics_getFocalLength(ar_session, intrinsics, &fx, &fy);
+        // ArCameraIntrinsics_getPrincipalPoint(ar_session, intrinsics, &cx, &cy);
+        // ArCameraIntrinsics_getImageDimensions(ar_session, intrinsics, &width, &height);
+        
+
+        //ARCore 에서 받아온 pointcloud rendering 하는 코드
         if (point_cloud_status == AR_SUCCESS) {
-            point_cloud_renderer_.Draw(projection_mat * view_mat, ar_session_,
-                                       ar_point_cloud);
+            //points 를 받아오는데, 그냥, 단순히 3개 x, y, z 의 반복임.
+            const float* points = ArPointCloud_getPoints(ar_session_, ar_point_cloud);
+            //총 points의 갯수를 받아오는
+            int32_t num_points = ArPointCloud_getNumPoints(ar_session_, ar_point_cloud);
+            FeatureListPtr point_features = ExtractFeaturesFromPointCloud(points, num_points, projection_mat);
+            //호출
+            point_cloud_renderer_.Draw(projection_mat * view_mat, ar_session_, ar_point_cloud);
             ArPointCloud_release(ar_point_cloud);
         }
+    }
+
+    FeatureListPtr ExtractFeaturesFromPointCloud(const float* points, int32_t num_points, glm::mat4 projection_matrix)
+    {
+        FeatureListPtr features = std::make_shared<std::vector<FeaturePerFrame>>();
+
+        for(int i = 0; i < num_points; ++i)
+        {
+            float X = points[i*3];
+            float Y = points[i*3 + 1];
+            float Z = points[i*3 + 2];
+
+            if(Z <= 0.01f) continue;
+
+            glm::vec4 world_point(X, Y, Z, 1.0f);
+            glm::vec4 projected = projection_matrix * world_point;
+
+            float u = projected.x / projected.w;
+            float v = projected.y / projected.w;
+
+            Eigen::Matrix<double, 7, 1> pt;
+            pt << X, Y, Z, u, v, 0.0, 0.0;
+
+            features.emplace_back(pt, 0.0);
+        }
+
+        return features;
     }
 
     bool HelloArApplication::IsDepthSupported() {

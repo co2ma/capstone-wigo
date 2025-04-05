@@ -39,7 +39,7 @@
 
 #include <queue>            // A*에 필요
 #include <cmath>            // 유클리드 거리 계산
-
+#include <pose_graph/src/include/feature_manager.h>
 namespace hello_ar {
 
 // HelloArApplication handles all application logics.
@@ -83,6 +83,10 @@ class HelloArApplication {
 
   // Returns true if depth is supported.
   bool IsDepthSupported();
+  
+  //이거 추가했음.
+  std::vector<FeaturePerFrame> point_features point_features(const float* points, int32_t num_points, glm::mat4 projection_matrix)
+
 
   void OnSettingsChange(bool is_instant_placement_enabled);
 
