@@ -6,9 +6,10 @@
 #include <vector>
 #include <numeric>
 #include <map>
-#include <eigen3/Eigen/Dense>
 #include "parameters.h"
 #include <iostream>
+#include <memory>
+#include <eigen3/Eigen/Dense>
 
 using namespace std;
 using namespace Eigen;
@@ -87,7 +88,7 @@ class FeatureManager
   
   int getFeatureCount();
   
-  bool addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td);
+  bool addFeatureCheckParallax(int frame_count, const FeatureListPtr& feature_list, double td);
   void debugShow();
   vector<pair<Vector3d, Vector3d>> getCorresponding(int frame_count_l, int frame_count_r);
   

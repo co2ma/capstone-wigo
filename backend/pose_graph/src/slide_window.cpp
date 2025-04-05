@@ -13,7 +13,7 @@ bool SlideWindow::failureDetection(){
     return false;
 }
 
-void SlideWindow::addVFeaturePerFrameBuf(const vFeaturePerFramePtr v_feature_per_frame){
+void SlideWindow::addFeatureListBuf(const FeatureListPtr feature_list){
     m_estimator.lock();
     v_feature_per_frame_buf.push(v_feature_per_frame);
     m_estimator.unlock();
@@ -26,16 +26,16 @@ void SlideWindow::process(){
     while (true){
         m_estimator.lock();
 
-        vFeaturePerFramePtr v_feature_per_frame = nullptr;
-        if(!v_feature_per_frame_buf.empty()){
-            v_feature_per_frame = v_feature_per_frame_buf.front();
-            v_feature_per_frame_buf.pop();
+        FeatureListPtr feature_list = nullptr;
+        if(!feature_list_buf.empty()){
+            feature_list = feature_list_buf.front();
+            feature_list_buf.pop();
         }
 
         m_estimator.unlock();
 
-        if(v_feature_per_frame != nullptr){
-            if (f_manager.addFeatureCheckParallax(frame_count, v_feature_per_frame, 5))
+        if(feature_list != nullptr){
+            if (f_manager.addFeatureCheckParallax(frame_count, feature_list, 5))
                 marginalization_flag = MARGIN_OLD;
 
             else

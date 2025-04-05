@@ -1,44 +1,33 @@
 #include "include/feature_manager.h"
 
-
 //대략적인 endframe 계산
-int FeaturePerId::endFrame()
-{
+int FeaturePerId::endFrame(){
     return start_frame + feature_per_frame.size() - 1;
 }
 
 
-FeatureManager::FeatureManager(const Matrix3d &_Rs)
-    : Rs(&_Rs)
-{
+FeatureManager::FeatureManager(const Matrix3d &_Rs): Rs(&_Rs){
     ric.setIdentity();
 }
 
 //estimator 에서 setRic를 호출하기는 하는데, 우리 extrinc 안써도 되지 않나? 일단 주석
-void FeatureManager::setRic(Matrix3d _ric)
-{
+void FeatureManager::setRic(Matrix3d _ric){
     ric[0] = _ric[0];
 }
 
-
 //list<FeaturePerId> feature; 이것도 estimator 에서 restart 할 때 가져다 씀
-void FeatureManager::clearState()
-{
+void FeatureManager::clearState(){
     feature.clear();
 }
 
 //feture -> feature_per_id -> feature_per_frame 이 식의 자료구조임. 
-int FeatureManager::getFeatureCount()
-{
+int FeatureManager::getFeatureCount(){
     int cnt = 0;
-    for (auto &it : feature)
-    {
-
+    for (auto &it : feature){
         it.used_num = it.feature_per_frame.size();
         
         //충분히 오래 추적된 point 만 사용할 것
-        if (it.used_num >= 2 && it.start_frame < WINDOW_SIZE - 2)
-        {
+        if (it.used_num >= 2 && it.start_frame < WINDOW_SIZE - 2){
             cnt++;
         }
     }
@@ -61,16 +50,14 @@ MIN_PALLERAX 값을 이용하기 위해서 focal_length() 가 필요한데, 우�
 단순히 무차별 대입해서 괜찮은 값을 찾아도 되긴함
 일단은 yaml 파일에서 나와있는 10.0 으로 header에 넣어놓음.
 */
-bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td)
-{
+bool FeatureManager::addFeatureCheckParallax(int frame_count, const FeatureListPtr& feature_list, double td){
     //los debug 변경
     std::cout << "input feature: " << (int)image.size();
     std::cout << "num of feature: " << getFeatureCount();
     double parallax_sum = 0;
     int parallax_num = 0;
     last_track_num = 0;
-    for (auto &id_pts : image)
-    {
+    for (auto &id_pts : image){
         FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
 
         int feature_id = id_pts.first;
@@ -79,8 +66,7 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
             return it.feature_id == feature_id;
                           });
 
-        if (it == feature.end())
-        {
+        if (it == feature.end()){
             feature.push_back(FeaturePerId(feature_id, frame_count));
             feature.back().feature_per_frame.push_back(f_per_fra);
         }
@@ -94,22 +80,19 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
     if (frame_count < 2 || last_track_num < 20)
         return true;
 
-    for (auto &it_per_id : feature)
-    {
+    for (auto &it_per_id : feature){
         if (it_per_id.start_frame <= frame_count - 2 &&
-            it_per_id.start_frame + int(it_per_id.feature_per_frame.size()) - 1 >= frame_count - 1)
-        {
+            it_per_id.start_frame + int(it_per_id.feature_per_frame.size()) - 1 >= frame_count - 1){
             parallax_sum += compensatedParallax2(it_per_id, frame_count);
             parallax_num++;
         }
     }
 
-    if (parallax_num == 0)
-    {
+    if (parallax_num == 0){
         return true;
     }
-    else
-    {
+    
+    else {
         // ROS_DEBUG("parallax_sum: %lf, parallax_num: %d", parallax_sum, parallax_num);
         // ROS_DEBUG("current parallax: %lf", parallax_sum / parallax_num * FOCAL_LENGTH);
         return parallax_sum / parallax_num >= MIN_PARALLAX;

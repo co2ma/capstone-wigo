@@ -17,7 +17,7 @@ class SlideWindow {
     SlideWindow();
     // ~SlideWindow();
 
-    void addVFeaturePerFrameBuf(const vFeaturePerFramePtr feature_per_id);
+    void addFeatureListBuf(const FeatureListPtr feature_list);
 
     void process();
     bool failureDetection();
@@ -48,5 +48,5 @@ class SlideWindow {
     Matrix3d back_R0, last_R, last_R0;
     Vector3d back_P0, last_P, last_P0;
 
-    queue<vFeaturePerFramePtr> v_feature_per_frame_buf;
+    queue<FeatureListPtr> feature_list_buf;
 };
